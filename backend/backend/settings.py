@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 
+import os
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -39,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'accounts',
+    "corsheaders",
 
 ]
 
@@ -50,9 +53,11 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
 ]
 
 ROOT_URLCONF = 'backend.urls'
+CORS_ALLOW_ALL_ORIGINS = True
 
 TEMPLATES = [
     {
@@ -122,28 +127,17 @@ STATIC_URL = 'static/'
 
 AUTH_USER_MODEL = "accounts.User"
 
-# Email settings — use environment variables in production
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = "<your-gmail-address>@gmail.com"   # set via env in production
-EMAIL_HOST_PASSWORD = "<your-app-password>"          # set via env (Gmail App Password)
 
-# For local dev you can use console backend instead of SMTP:
-# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-
-# Allow frontend during development:
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-]
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEBUG = True  # or False in production
 FRONTEND_BASE_URL = "http://localhost:3000"
-
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = "your@gmail.com"
-EMAIL_HOST_PASSWORD = "your_app_password"
-FRONTEND_BASE_URL = "http://localhost:3000"
+if DEBUG:
+    # Local development: print emails to console
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+else:
+    # Production: send real emails via SMTP
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = "smtp.gmail.com"
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
+    EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
