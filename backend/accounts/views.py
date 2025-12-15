@@ -1,46 +1,226 @@
-# accounts/views.py
+# backend/accounts/views.py
+from django.conf import settings
+from django.contrib.auth import authenticate
+from django.shortcuts import redirect
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import RegisterSerializer
-from .utils import verify_token
 from .models import User
-from django.shortcuts import redirect
+from .serializers import RegisterSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import IsAuthenticated
+import secrets
+from rest_framework_simplejwt.tokens import RefreshToken
+from .utils import verify_google_token
+from django.core.mail import send_mail
 
+from .utils import (
+    generate_verification_token,
+    verify_token,
+    send_verification_email,
+)
+
+# RegisterView: accepts username, email, password, confirm_password
 class RegisterView(APIView):
     def post(self, request):
         serializer = RegisterSerializer(data=request.data, context={"request": request})
-        serializer.is_valid(raise_exception=True)
+
+        if not serializer.is_valid():
+            # Get the first error message
+            errors = serializer.errors
+
+            # Example: {"username": ["Username taken"]} → "Username taken"
+            first_field = next(iter(errors))
+            first_error = errors[first_field][0]
+
+            return Response(
+                first_error,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         user = serializer.save()
-        return Response({"detail": "Registration successful. Verification email sent."}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"detail": "Registration successful. Verification email sent."},
+            status=status.HTTP_201_CREATED
+        )
 
 
+ 
+# Login View
+class LoginView(APIView):
+    def post(self, request):
+        email = request.data.get("email", "").lower()
+        password = request.data.get("password", "")
+
+        if not email or not password:
+            return Response({"error": "Email and password required"}, status=400)
+
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return Response({"error": "User does'nt exist"}, status=401)
+
+        if not user.is_email_verified:
+            token = generate_verification_token(user.id, user.email)
+            send_verification_email(user, token)
+            return Response(
+                {"error": "Email not verified. Verification email resent."},
+                status=400,
+            )
+
+        if not user.check_password(password):
+            return Response({"error": "Invalid credentials"}, status=401)
+
+        # Generate JWT tokens
+        refresh = RefreshToken.for_user(user)
+
+        return Response(
+            {
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "plan": user.plan.title if user.plan else None
+                },
+            },
+            status=200,
+        )
+
+
+# VerifyEmailView: verifies token (redirects to frontend on success), supports json=true
 class VerifyEmailView(APIView):
-    """
-    Endpoint to verify token, e.g. GET /api/auth/verify-email/?token=XXX
-    """
     def get(self, request):
         token = request.query_params.get("token")
+        as_json = request.query_params.get("json", "false").lower() == "true"
+
         if not token:
             return Response({"error": "Missing token"}, status=status.HTTP_400_BAD_REQUEST)
-        data = verify_token(token)
-        if "error" in data:
-            return Response({"error": data["error"]}, status=status.HTTP_400_BAD_REQUEST)
-        # load user and mark verified
+
+        result = verify_token(token)
+        if not result.get("ok"):
+            # invalid or expired
+            reason = result.get("error", "invalid")
+            if as_json:
+                return Response({"error": reason}, status=status.HTTP_400_BAD_REQUEST)
+            return redirect(f"{settings.FRONTEND_BASE_URL}/verify-failed?reason={reason}")
+
+        data = result.get("data", {})
         user_id = data.get("user_id")
+        email = data.get("email")
         try:
-            user = User.objects.get(id=user_id, email__iexact=data.get("email"))
+            user = User.objects.get(id=user_id, email__iexact=email)
         except User.DoesNotExist:
-            return Response({"error": "User not found"}, status=status.HTTP_400_BAD_REQUEST)
+            if as_json:
+                return Response({"error": "user_not_found"}, status=status.HTTP_400_BAD_REQUEST)
+            return redirect(f"{settings.FRONTEND_BASE_URL}/verify-failed?reason=user_not_found")
+
         user.is_email_verified = True
         user.save()
-        # After verification redirect to frontend login page (or return JSON)
-        frontend_login = request.build_absolute_uri("/")  # fallback
-        # If you set FRONTEND_BASE_URL in settings, better to use that:
-        from django.conf import settings
-        frontend_login = f"{settings.FRONTEND_BASE_URL}/login"
-        # Option A: Redirect user to frontend login page:
-        return redirect(frontend_login)
 
-        # Option B: return JSON:
-        # return Response({"detail": "Email verified. You can now login."})
+        if as_json:
+            return Response({"detail": "Email verified"}, status=status.HTTP_200_OK)
+
+        return redirect(f"{settings.FRONTEND_BASE_URL}/login")
+
+
+# ResendVerificationView: POST { "email": "..." }
+class ResendVerificationView(APIView):
+    def post(self, request):
+        email = (request.data.get("email") or "").lower()
+        if not email:
+            return Response({"error": "Email required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.is_email_verified:
+            return Response({"detail": "User already verified"}, status=status.HTTP_400_BAD_REQUEST)
+
+        token = generate_verification_token(user.id, user.email)
+        send_verification_email(user, token)
+        return Response({"detail": "Verification email resent"}, status=status.HTTP_200_OK)
+
+
+
+class ProtectedView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(
+            {
+                "detail": "You are authenticated",
+                "user": request.user.username,
+            },
+            status=200,
+        )
+
+
+
+class GoogleLoginView(APIView):
+    def post(self, request):
+        token = request.data.get("token")
+
+        if not token:
+            return Response({"error": "Token required"}, status=400)
+
+        google_data = verify_google_token(token)
+        if not google_data:
+            return Response({"error": "Invalid Google token"}, status=400)
+
+        email = google_data["email"]
+        name = google_data.get("name", "")
+        base_username = email.split("@")[0]
+
+        # Ensure unique username
+        username = base_username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={
+                "username": username,
+                "is_email_verified": True,
+            },
+        )
+
+        # If newly created → generate password & send email
+        if created:
+            raw_password = secrets.token_urlsafe(8)
+            user.set_password(raw_password)
+            user.save()
+
+            send_mail(
+                subject="Your account credentials",
+                message=(
+                    f"Hi {user.username},\n\n"
+                    f"Your account was created using Google Login.\n\n"
+                    f"Username: {user.username}\n"
+                    f"Password: {raw_password}\n\n"
+                    f"Please login and change your password."
+                ),
+                from_email=settings.EMAIL_HOST_USER,
+                recipient_list=[user.email],
+            )
+
+        # Issue JWT tokens
+        refresh = RefreshToken.for_user(user)
+
+        return Response(
+            {
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                },
+            },
+            status=200,
+        )

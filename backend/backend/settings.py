@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 import os
 
@@ -42,6 +43,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'accounts',
     "corsheaders",
+    'plans',
+    'portfolio',
 
 ]
 
@@ -130,14 +133,30 @@ AUTH_USER_MODEL = "accounts.User"
 
 DEBUG = True  # or False in production
 FRONTEND_BASE_URL = "http://localhost:3000"
-if DEBUG:
-    # Local development: print emails to console
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-else:
-    # Production: send real emails via SMTP
-    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-    EMAIL_HOST = "smtp.gmail.com"
-    EMAIL_PORT = 587
-    EMAIL_USE_TLS = True
-    EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
-    EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+EMAIL_HOST_USER = "put email here"
+EMAIL_HOST_PASSWORD = "Put you pawwword here"  
+
+
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(seconds=300),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
+ 
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
