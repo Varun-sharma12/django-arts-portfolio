@@ -1,16 +1,16 @@
-"use client";
+// app/layout.js
 import "./globals.css";
 import Navbar from "./components/Navbar";
-import { GoogleOAuthProvider } from "@react-oauth/google";
+import GoogleOAuthWrapper from "./components/GoogleOAuthWrapper";
 
 export default function RootLayout({ children }) {
   return (
-    <html>
+    <html lang="en">
       <body>
-        <GoogleOAuthProvider clientId="655440522588-ndc0vvofgtd67rnu616a43lbi8gp9dks.apps.googleusercontent.com">
-            <Navbar />
+        <Navbar />
+        <GoogleOAuthWrapper>
           {children}
-        </GoogleOAuthProvider>
+        </GoogleOAuthWrapper>
       </body>
     </html>
   );

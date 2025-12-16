@@ -179,13 +179,13 @@ localStorage.setItem(
 
   /* ------------------ UI ------------------ */
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <div className="min-h-screen flex text-black items-center justify-center bg-gray-100">
       <div className="w-full max-w-md bg-white p-6 rounded-xl shadow">
         <h1 className="text-2xl font-semibold text-center mb-6">
           Create Account
         </h1>
 
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit} className="space-y-4 text-black">
           {[
             { name: "username", label: "Username", type: "text" },
             { name: "email", label: "Email", type: "email" },
@@ -199,7 +199,7 @@ localStorage.setItem(
                 type={f.type}
                 value={form[f.name]}
                 onChange={handleChange}
-                className={`w-full p-2 border rounded focus:outline-none ${
+                className={`w-full p-2 border text-black rounded focus:outline-none ${
                   errors[f.name]
                     ? "border-red-500"
                     : "focus:border-blue-500"
@@ -220,7 +220,7 @@ localStorage.setItem(
               type={showPassword ? "text" : "password"}
               value={form.password}
               onChange={handleChange}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded text-black"
             />
             {errors.password && (
               <p className="text-xs text-red-600 mt-1">{errors.password}</p>
@@ -228,7 +228,7 @@ localStorage.setItem(
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="block text-sm font-medium mb-1 text-black">
               Confirm Password
             </label>
             <input

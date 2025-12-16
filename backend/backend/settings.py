@@ -139,9 +139,8 @@ EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-EMAIL_HOST_USER = "put email here"
-EMAIL_HOST_PASSWORD = "Put you pawwword here"  
-
+EMAIL_HOST_USER = "varunsharmaji4321@gmail.com"
+EMAIL_HOST_PASSWORD = "aniq vmhh ynrc umwr"   
 
 
 REST_FRAMEWORK = {

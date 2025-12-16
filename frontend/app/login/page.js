@@ -136,7 +136,7 @@ function handleForgotPassword() {
   /* ---------------- UI ---------------- */
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <div className="min-h-screen flex items-center text-black justify-center bg-gray-100">
       <div className="bg-white w-full max-w-md p-8 rounded-xl shadow-lg">
         <h1 className="text-2xl font-semibold text-center mb-6">Login</h1>
 
