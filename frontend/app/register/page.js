@@ -20,6 +20,7 @@ export default function Register() {
   const [submitting, setSubmitting] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
+  const [canResend, setCanResend] = useState(false);
 
   /* ------------------ AUTH REDIRECT ------------------ */
   useEffect(() => {
@@ -29,21 +30,21 @@ export default function Register() {
   }, [router]);
 
   useEffect(() => {
-  function handleStorageChange(event) {
-    if (event.key === "pendingVerification" && event.newValue === null) {
-      // ✅ Email verified
-      setCountdown(0);
-      setSubmitting(false);
-      setMessage("");
+    function handleStorageChange(event) {
+      if (event.key === "pendingVerification" && event.newValue === null) {
+        // ✅ Email verified
+        setCountdown(0);
+        setSubmitting(false);
+        setMessage("");
 
-      // Clean UI + redirect
-      router.replace("/login");
+        // Clean UI + redirect
+        router.replace("/login");
+      }
     }
-  }
 
-  window.addEventListener("storage", handleStorageChange);
-  return () => window.removeEventListener("storage", handleStorageChange);
-}, [router]);
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [router]);
 
 
   /* ------------------ GOOGLE LOGIN ------------------ */
@@ -121,11 +122,13 @@ export default function Register() {
   const startCountdown = (seconds = 60) => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     setCountdown(seconds);
+    setCanResend(false);
 
     intervalRef.current = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(intervalRef.current);
+          setCanResend(true);
           return 0;
         }
         return prev - 1;
@@ -154,25 +157,74 @@ export default function Register() {
         body: JSON.stringify(form),
       });
 
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw data;
+      }
+      // setSubmitting(true);
       const data = await res.json();
-      if (!res.ok) throw new Error();
 
-    setMessage("Check your email for verification link.");
-setSubmitting(false);              // ✅ IMPORTANT
-startCountdown(60);
+      setMessage("Check your email for verification link.");
+      setSubmitting(false);              // ✅ IMPORTANT
+      startCountdown(60);
 
-localStorage.setItem("pendingVerification", "true");
-localStorage.setItem(
-  "verificationExpiry",
-  (Date.now() + 60 * 1000).toString()
-);
+      localStorage.setItem("pendingVerification", "true");
+      localStorage.setItem(
+        "verificationExpiry",
+        (Date.now() + 60 * 1000).toString()
+      );
 
-    } catch {
-      setMessage("Registration failed. Try again.");
-      setSubmitting(false);
+    } catch (error) {
+      // setMessage(error.message || "Something Went Wrong");
+
+      handleBackendError(error);
+
     }
   }
 
+  function handleBackendError(error) {
+    setSubmitting(false);
+    if (typeof error === "object") {
+      const fieldErrors = {};
+      Object.entries(error).forEach(([field, messages]) => {
+        fieldErrors[field] = messages[0];
+
+      })
+      setErrors(fieldErrors);
+      setMessage("");
+    }
+    else {
+      setMessage("Something went wrong");
+    }
+  }
+
+  /*------------------Resend Verification---------------------*/
+
+  async function resendVerification(params) {
+    if (!canResend) return;
+    try {
+      setSubmitting(true);
+      setMessage("");
+      const res = await fetch("http://127.0.0.1:8000/api/auth/register/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw data;
+      }
+      setMessage("Verification email resent.");
+      setSubmitting(false);
+      startCountdown(60);
+    } catch (error) {
+      handleBackendError(error);
+    }
+
+
+  }
   // useEffect(() => {
   //   if (countdown === 0) setSubmitting(false);
   // }, [countdown]);
@@ -189,6 +241,7 @@ localStorage.setItem(
           {[
             { name: "username", label: "Username", type: "text" },
             { name: "email", label: "Email", type: "email" },
+
           ].map((f) => (
             <div key={f.name}>
               <label className="block text-sm font-medium mb-1">
@@ -199,11 +252,10 @@ localStorage.setItem(
                 type={f.type}
                 value={form[f.name]}
                 onChange={handleChange}
-                className={`w-full p-2 border text-black rounded focus:outline-none ${
-                  errors[f.name]
-                    ? "border-red-500"
-                    : "focus:border-blue-500"
-                }`}
+                className={`w-full p-2 border text-black rounded focus:outline-none ${errors[f.name]
+                  ? "border-red-500"
+                  : "focus:border-blue-500"
+                  }`}
               />
               {errors[f.name] && (
                 <p className="text-xs text-red-600 mt-1">
@@ -220,7 +272,9 @@ localStorage.setItem(
               type={showPassword ? "text" : "password"}
               value={form.password}
               onChange={handleChange}
-              className="w-full p-2 border rounded text-black"
+              className={`w-full p-2 border rounded text-black ${errors['password']
+                ? "border-red-500"
+                : "focus:border-blue-500"}`}
             />
             {errors.password && (
               <p className="text-xs text-red-600 mt-1">{errors.password}</p>
@@ -236,7 +290,9 @@ localStorage.setItem(
               type={showPassword ? "text" : "password"}
               value={form.confirm_password}
               onChange={handleChange}
-              className="w-full p-2 border rounded"
+              className={`w-full p-2 border rounded text-black ${errors['password']
+                ? "border-red-500"
+                : "focus:border-blue-500"}`}
             />
             {errors.confirm_password && (
               <p className="text-xs text-red-600 mt-1">
@@ -255,23 +311,33 @@ localStorage.setItem(
 
           <button
             disabled={submitting || countdown > 0 || hasErrors}
-            className={`w-full py-2 rounded text-white font-medium transition ${
-              submitting || countdown > 0 || hasErrors
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
-            }`}
+            className={`w-full py-2 rounded text-white font-medium transition ${submitting || countdown > 0 || hasErrors
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+              }`}
           >
             {countdown > 0
               ? `Verify Email (${formatTime(countdown)})`
               : submitting
-              ? "Submitting..."
-              : "Register"}
+                ? "Submitting..."
+                : "Register"}
           </button>
         </form>
 
-        {message && (
+        {message && countdown > 0 && (
           <div className="mt-4 text-center text-sm text-green-700">
             {message}
+          </div>
+        )}
+        {canResend && (
+          <div className="mt-4 text-center text-sm">
+            <button
+              onClick={resendVerification}
+              className="text-blue-600 hover:underline font-medium cursor-pointer"
+              disabled={submitting}
+            >
+              Resend Verification Email
+            </button>
           </div>
         )}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { GoogleLogin } from "@react-oauth/google";
 
@@ -14,6 +14,9 @@ export default function LoginPage() {
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [canResend, setCanResend] = useState(false);
+  const intervalRef = useRef(null);
 
   /* ---------------- REAL-TIME VALIDATION ---------------- */
 
@@ -26,17 +29,17 @@ export default function LoginPage() {
       newErrors.email = "Enter a valid email";
     }
 
-  //    // Password validation
-  // if (!form.password) {
-  //   // newErrors.password = "Password is required";
-  // } else if (
-  //   !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{12,}$/.test(
-  //     form.password
-  //   )
-  // ) {
-  //   newErrors.password =
-  //     "Min 12 chars, 1 uppercase, 1 lowercase, 1 number & 1 special character";
-  // }
+    //    // Password validation
+    // if (!form.password) {
+    //   // newErrors.password = "Password is required";
+    // } else if (
+    //   !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{12,}$/.test(
+    //     form.password
+    //   )
+    // ) {
+    //   newErrors.password =
+    //     "Min 12 chars, 1 uppercase, 1 lowercase, 1 number & 1 special character";
+    // }
 
 
     setErrors(newErrors);
@@ -44,11 +47,11 @@ export default function LoginPage() {
 
 
   useEffect(() => {
-  const token = localStorage.getItem("accessToken");
-  if (token) {
-    router.replace("/dashboard");
-  }
-}, [router]);
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      router.replace("/dashboard");
+    }
+  }, [router]);
 
   /* ---------------- INPUT HANDLER ---------------- */
 
@@ -74,7 +77,15 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setErrors({ form: data.error || "Login failed" });
+        const data = await res.json();
+        // 🔐 EMAIL NOT VERIFIED FLOW
+        if (data.code === "email_not_verified") {
+          setErrors({ form: data.message });
+          startCountdown(60);       // start timer
+          setLoading(false);
+          return;
+        }
+        setErrors({ form: data.error || data.message || "Login failed" });
         setLoading(false);
         return;
       }
@@ -116,21 +127,72 @@ export default function LoginPage() {
     router.replace("/dashboard");
   }
 
+  function startCountdown(seconds = 60) {
+    if (intervalRef.current) clearInterval(intervalRef.current);
 
-function handleForgotPassword() {
-  if (!form.email || errors.email) {
-    setErrors((prev) => ({
-      ...prev,
-      email: "Enter a valid email to reset password",
-    }));
-    return;
+    setCountdown(seconds);
+    setCanResend(false);
+
+    intervalRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(intervalRef.current);
+          setCanResend(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   }
 
-  // Later this will call backend API
-  alert(
-    "If your email is verified, a reset link will be sent. Otherwise, verification email will be resent."
-  );
-}
+  /*-------------------------For Resend Verification--------------------*/
+  async function resendVerification(params) {
+    if (!canResend) return;
+    try {
+      setSubmitting(true);
+      setMessage("");
+      const res = await fetch("http://127.0.0.1:8000/api/auth/register/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw data;
+      }
+      setMessage("Verification email resent.");
+      setSubmitting(false);
+      startCountdown(60);
+    } catch (error) {
+      handleBackendError(error);
+    }
+
+
+  }
+
+  function formatTime(sec) {
+    return `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(
+      sec % 60
+    ).padStart(2, "0")}`;
+  }
+
+
+
+  function handleForgotPassword() {
+    if (!form.email || errors.email) {
+      setErrors((prev) => ({
+        ...prev,
+        email: "Enter a valid email to reset password",
+      }));
+      return;
+    }
+
+    // Later this will call backend API
+    alert(
+      "If your email is verified, a reset link will be sent. Otherwise, verification email will be resent."
+    );
+  }
 
 
   /* ---------------- UI ---------------- */
@@ -154,9 +216,8 @@ function handleForgotPassword() {
               name="email"
               value={form.email}
               onChange={handleChange}
-              className={`w-full p-2 border rounded ${
-                errors.email ? "border-red-500" : "border-gray-300"
-              }`}
+              className={`w-full p-2 border rounded ${errors.email ? "border-red-500" : "border-gray-300"
+                }`}
               placeholder="you@example.com"
             />
             {errors.email && (
@@ -172,9 +233,8 @@ function handleForgotPassword() {
               name="password"
               value={form.password}
               onChange={handleChange}
-              className={`w-full p-2 border rounded ${
-                errors.password ? "border-red-500" : "border-gray-300"
-              }`}
+              className={`w-full p-2 border rounded ${errors.password ? "border-red-500" : "border-gray-300"
+                }`}
               placeholder="••••••••"
             />
             {errors.password && (
@@ -182,24 +242,23 @@ function handleForgotPassword() {
             )}
           </div>
           <div className="text-right">
-  <button
-    type="button"
-    className="text-sm text-blue-600 hover:underline cursor-pointer"
-    onClick={() => handleForgotPassword()}
-  >
-    Forgot password?
-  </button>
-</div>
+            <button
+              type="button"
+              className="text-sm text-blue-600 hover:underline cursor-pointer"
+              onClick={() => handleForgotPassword()}
+            >
+              Forgot password?
+            </button>
+          </div>
 
 
           {/* SUBMIT */}
           <button
             disabled={loading || Object.keys(errors).length > 0}
-            className={`w-full py-2 rounded text-white font-medium ${
-              loading || Object.keys(errors).length > 0
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
-            }`}
+            className={`w-full py-2 rounded text-white font-medium ${loading || Object.keys(errors).length > 0
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+              }`}
           >
             {loading ? "Logging in..." : "Login"}
           </button>
@@ -220,11 +279,11 @@ function handleForgotPassword() {
           />
         </div>
         <div className="mt-4 text-center text-sm text-gray-600">
-  Don&apos;t have an account?{" "}
-  <a href="/register" className="text-blue-600 hover:underline">
-    Sign up
-  </a>
-</div>
+          Don&apos;t have an account?{" "}
+          <a href="/register" className="text-blue-600 hover:underline">
+            Sign up
+          </a>
+        </div>
 
       </div>
     </div>

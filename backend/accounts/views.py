@@ -30,11 +30,11 @@ class RegisterView(APIView):
             errors = serializer.errors
 
             # Example: {"username": ["Username taken"]} → "Username taken"
-            first_field = next(iter(errors))
-            first_error = errors[first_field][0]
+            # first_field = next(iter(errors))
+            # first_error = errors[first_field][0]
 
             return Response(
-                first_error,
+                errors,
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -64,7 +64,10 @@ class LoginView(APIView):
             token = generate_verification_token(user.id, user.email)
             send_verification_email(user, token)
             return Response(
-                {"error": "Email not verified. Verification email resent."},
+                {
+                    "code": "email_not_verified",
+                    "error": "Email not verified. Verification email resent."
+                },
                 status=400,
             )
 

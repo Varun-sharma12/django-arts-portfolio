@@ -4,10 +4,30 @@ from .models import User
 from .utils import generate_verification_token, send_verification_email
 
 class RegisterSerializer(serializers.Serializer):
-    username = serializers.CharField(max_length=150)
-    email = serializers.EmailField()
-    password = serializers.CharField(write_only=True, min_length=8)
-    confirm_password = serializers.CharField(write_only=True)
+    username = serializers.CharField(
+        max_length=150,
+        error_messages={
+        "blank": "Username is required.",
+        "required": "Username is required."
+    })
+    email = serializers.EmailField( 
+        error_messages={
+        "blank": "Email is required.",
+        "required": "Email is required.",
+        "invalid": "Enter a valid email address."
+    })
+    password = serializers.CharField(
+        write_only=True, min_length=8,
+        error_messages={
+         "blank": "Password is required.",
+        "min_length": "Password must be at least 8 characters."
+    })
+    confirm_password = serializers.CharField(
+        write_only=True,        
+        error_messages={
+        "required": "Confirm password is required.",
+        "blank": "Confirm password is required."
+    })
 
     def validate(self, attrs):
         username = attrs["username"].strip()
