@@ -176,8 +176,6 @@ export default function Register() {
       );
 
     } catch (error) {
-      // setMessage(error.message || "Something Went Wrong");
-
       handleBackendError(error);
 
     }

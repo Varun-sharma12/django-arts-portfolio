@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [canResend, setCanResend] = useState(false);
+  const [message, setMessage] = useState("");
   const intervalRef = useRef(null);
 
   /* ---------------- REAL-TIME VALIDATION ---------------- */
@@ -66,7 +67,7 @@ export default function LoginPage() {
     if (Object.keys(errors).length > 0) return;
 
     setLoading(true);
-
+    setMessage("");
     try {
       const res = await fetch("http://127.0.0.1:8000/api/auth/login/", {
         method: "POST",
@@ -77,30 +78,45 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        const data = await res.json();
-        // 🔐 EMAIL NOT VERIFIED FLOW
-        if (data.code === "email_not_verified") {
-          setErrors({ form: data.message });
-          startCountdown(60);       // start timer
-          setLoading(false);
-          return;
-        }
-        setErrors({ form: data.error || data.message || "Login failed" });
-        setLoading(false);
-        return;
+        //  setErrors(data.errors || { form: "Login failed" });
+        throw data;
       }
-
       localStorage.setItem("accessToken", data.access);
       localStorage.setItem("refreshToken", data.refresh);
       localStorage.setItem("user", JSON.stringify(data.user));
 
       window.dispatchEvent(new Event("auth-change"));
       router.replace("/dashboard");
-    } catch {
-      setErrors({ form: "Network error" });
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      // setErrors({ form: "Network error" });
+      handleBackendError(error)
+    } 
+  }
+
+
+  function handleBackendError(error) {
+    setLoading(true);
+    console.log(error);
+    if (typeof error === "object" && error.code !== "email_not_verified") {
+      const fieldErrors = {};
+      Object.entries(error['errors']).forEach(([field, messages]) => {
+        fieldErrors[field] = messages;
+
+      })
+      setErrors(fieldErrors);
+      setMessage("");
     }
+    else if (error.code === "email_not_verified") {
+      setMessage("Check your email for verification link.");
+      setLoading(true);              // IMPORTANT
+      startCountdown(60);
+    }
+
+    else {
+      setMessage("Something went wrong");
+    }
+    setLoading(true);
+    return;
   }
 
   /* ---------------- GOOGLE LOGIN ---------------- */
@@ -149,9 +165,9 @@ export default function LoginPage() {
   async function resendVerification(params) {
     if (!canResend) return;
     try {
-      setSubmitting(true);
-      setMessage("");
-      const res = await fetch("http://127.0.0.1:8000/api/auth/register/", {
+      // setSubmitting(true);
+      // setMessage("");
+      const res = await fetch("http://127.0.0.1:8000/api/auth/login/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -161,8 +177,8 @@ export default function LoginPage() {
         const data = await res.json();
         throw data;
       }
-      setMessage("Verification email resent.");
-      setSubmitting(false);
+      // setMessage("Verification email resent.");
+      // setSubmitting(false);
       startCountdown(60);
     } catch (error) {
       handleBackendError(error);
@@ -260,10 +276,30 @@ export default function LoginPage() {
               : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
               }`}
           >
-            {loading ? "Logging in..." : "Login"}
+            {countdown > 0
+              ? `Verify Email (${formatTime(countdown)})`
+              : loading
+                ? "Logging in..."
+                : "Login"}
+
           </button>
         </form>
-
+        {message && countdown > 0 && (
+          <div className="mt-4 text-center text-sm text-green-700">
+            {message}
+          </div>
+        )}
+        {canResend && (
+          <div className="mt-4 text-center text-sm">
+            <button
+              onClick={resendVerification}
+              className="text-blue-600 hover:underline font-medium cursor-pointer"
+              disabled={loading}
+            >
+              Resend Verification Email
+            </button>
+          </div>
+        )}
         {/* DIVIDER */}
         <div className="my-6 flex items-center">
           <div className="flex-grow border-t"></div>
