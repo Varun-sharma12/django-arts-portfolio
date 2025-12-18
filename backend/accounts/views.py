@@ -52,13 +52,43 @@ class LoginView(APIView):
         email = request.data.get("email", "").lower()
         password = request.data.get("password", "")
 
-        if not email or not password:
-            return Response({"error": "Email and password required"}, status=400)
-
+        if not email and not password:
+            return Response(
+                {
+                    "errors": {
+                        "email": "Email is required",
+                        "password": "Password is required"
+                    }
+                }
+                , status=400
+                )
+        if not email:
+            return Response(
+                {
+                    "errors": {
+                        "email": "Email is required",
+                    }
+                }, status=400
+            )
+        if not password:
+            return Response(
+                {
+                    "errors": {
+                        "password": "password is required",
+                    }
+                }, status=400
+            )
         try:
             user = User.objects.get(email__iexact=email)
         except User.DoesNotExist:
-            return Response({"error": "User does'nt exist"}, status=401)
+           return Response(
+                {
+                    "errors": {
+                        "email": "User does not exist"
+                    }
+                },
+                status=401
+            )
 
         if not user.is_email_verified:
             token = generate_verification_token(user.id, user.email)
@@ -66,13 +96,22 @@ class LoginView(APIView):
             return Response(
                 {
                     "code": "email_not_verified",
-                    "error": "Email not verified. Verification email resent."
+                      "errors": {
+                        "message": "Email not verified. Verification email resent."
+                    }
                 },
                 status=400,
             )
 
         if not user.check_password(password):
-            return Response({"error": "Invalid credentials"}, status=401)
+            return Response(
+                {
+                    "errors": {
+                        "password": "Invalid credentials"
+                    }
+                },
+                status=401
+            )
 
         # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
