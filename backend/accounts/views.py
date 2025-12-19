@@ -107,7 +107,7 @@ class LoginView(APIView):
             return Response(
                 {
                     "errors": {
-                        "password": "Invalid credentials"
+                        "form": "Invalid credentials"
                     }
                 },
                 status=401

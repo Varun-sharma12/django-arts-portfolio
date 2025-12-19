@@ -56,7 +56,10 @@ export default function LoginPage() {
 
   /* ---------------- INPUT HANDLER ---------------- */
 
+
   function handleChange(e) {
+    console.log("hii changing");
+    console.log("Can Resend", canResend, "Loading", loading);
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
@@ -90,7 +93,7 @@ export default function LoginPage() {
     } catch (error) {
       // setErrors({ form: "Network error" });
       handleBackendError(error)
-    } 
+    }
   }
 
 
@@ -105,17 +108,19 @@ export default function LoginPage() {
       })
       setErrors(fieldErrors);
       setMessage("");
+      setLoading(false);
     }
     else if (error.code === "email_not_verified") {
-      setMessage("Check your email for verification link.");
+      setMessage("For login you have to be verified.Check your email for verification link.");
       setLoading(true);              // IMPORTANT
       startCountdown(60);
     }
 
     else {
       setMessage("Something went wrong");
+      setLoading(false);
     }
-    setLoading(true);
+
     return;
   }
 
@@ -177,7 +182,7 @@ export default function LoginPage() {
         const data = await res.json();
         throw data;
       }
-      // setMessage("Verification email resent.");
+      setMessage("Verification email resent.");
       // setSubmitting(false);
       startCountdown(60);
     } catch (error) {
@@ -270,7 +275,7 @@ export default function LoginPage() {
 
           {/* SUBMIT */}
           <button
-            disabled={loading || Object.keys(errors).length > 0}
+            disabled={loading || Object.keys(errors).length > 0 || canResend}
             className={`w-full py-2 rounded text-white font-medium ${loading || Object.keys(errors).length > 0
               ? "bg-gray-400 cursor-not-allowed"
               : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
@@ -279,7 +284,7 @@ export default function LoginPage() {
             {countdown > 0
               ? `Verify Email (${formatTime(countdown)})`
               : loading
-                ? "Logging in..."
+                ? (!canResend ? "Logging in..." : "Login")
                 : "Login"}
 
           </button>
@@ -294,7 +299,7 @@ export default function LoginPage() {
             <button
               onClick={resendVerification}
               className="text-blue-600 hover:underline font-medium cursor-pointer"
-              disabled={loading}
+            // disabled={loading}
             >
               Resend Verification Email
             </button>
