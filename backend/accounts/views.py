@@ -5,7 +5,7 @@ from django.shortcuts import redirect
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import User
+from .models import User, PasswordResetToken
 from .serializers import RegisterSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
@@ -186,7 +186,46 @@ class ResendVerificationView(APIView):
         send_verification_email(user, token)
         return Response({"detail": "Verification email resent"}, status=status.HTTP_200_OK)
 
+class ForgotPasswordView(APIView):
+    def post(self, request):
+        email = (request.data.get("email") or "").lower().strip()
+        if not email:
+            return Response({"error": "Email required"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return Response({"error": "This email is not registered"})
+        if  not user.is_email_verified :
+            return Response(
+                            {"error": "User is not verified"},
+                            status=status.HTTP_400_BAD_REQUEST
+                            )
+        PasswordResetToken.objects.filter(user=user).delete()
 
+        reset_token = PasswordResetToken.objects.create(user=user)
+
+        reset_link = (
+            f"{settings.FRONTEND_BASE_URL}/reset-password/{reset_token.token}"
+        )
+
+        send_mail(
+            subject="Reset Your Password",
+            message=(
+                f"Hi {user.username}, \n\n"
+                f"Click the link below to reset your password: \n\n"
+                f"{reset_link}\n\n"
+                f"This Link Will Expire in 15 minutes"
+            ),
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[user.email],            
+        )
+
+        return Response(
+            {
+                "detail": "Password reset Link sent to email"
+            },
+            status=status.HTTP_200_OK
+        )
 
 class ProtectedView(APIView):
     permission_classes = [IsAuthenticated]
@@ -265,4 +304,48 @@ class GoogleLoginView(APIView):
                 },
             },
             status=200,
+        )
+
+
+class ResetPasswordView(APIView):
+    def post(self, request):
+        token = request.data.get("token")
+        password = request.data.get("password")
+        confirm_password = request.data.get("confirm_password")
+        
+        if not token or not password or not confirm_password:
+            return Response(
+                {"error": "Token, Password and confirm password are required"},
+                status = status.HTTP_400_BAD_REQUEST
+            )
+        if password != confirm_password:
+            return Response(
+                {"error": "Password do not match"},
+                status = status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            reset_token = PasswordResetToken.objects.get(token=token)
+        except PasswordResetToken.DoesNotExist:
+            return Response(
+                {"error": "Invalid or expired token"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if reset_token.is_expired():
+            reset_token.delete()
+            return Response(
+                {"error": "Token is Expired"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        user = reset_token.user
+        user.set_password(password)
+        user.save()
+        
+        reset_token.delete()
+        
+        return Response(
+            {"detail": "Password reset successfully"},
+            status=status.HTTP_200_OK
         )
