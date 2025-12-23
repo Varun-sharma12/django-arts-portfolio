@@ -1,6 +1,6 @@
 # accounts/urls.py
 from django.urls import path, include
-from .views import VerifyEmailView, ResendVerificationView, ForgotPasswordView
+from .views import VerifyEmailView, ResendVerificationView, ForgotPasswordView, ResetPasswordView
 from .views import RegisterView, LoginView  # if present
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import ProtectedView
@@ -16,5 +16,5 @@ urlpatterns = [
     path("google-login/", GoogleLoginView.as_view()),
     path("api/plans/", include("plans.urls")),
     path("forgot-password/",ForgotPasswordView.as_view(), name='forgot_password'),
-
+    path("reset-password/", ResetPasswordView.as_view(), name="reset_password"),
 ]

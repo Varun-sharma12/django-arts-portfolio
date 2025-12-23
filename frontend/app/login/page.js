@@ -201,18 +201,12 @@ export default function LoginPage() {
 
 
   function handleForgotPassword() {
-    if (!form.email || errors.email) {
-      setErrors((prev) => ({
-        ...prev,
-        email: "Enter a valid email to reset password",
-      }));
-      return;
-    }
 
+    router.push("/forgot-password"); // 👈 target route
     // Later this will call backend API
-    alert(
-      "If your email is verified, a reset link will be sent. Otherwise, verification email will be resent."
-    );
+    // alert(
+    //   "If your email is verified, a reset link will be sent. Otherwise, verification email will be resent."
+    // );
   }
 
 

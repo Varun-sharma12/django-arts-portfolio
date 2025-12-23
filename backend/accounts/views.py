@@ -13,6 +13,8 @@ import secrets
 from rest_framework_simplejwt.tokens import RefreshToken
 from .utils import verify_google_token
 from django.core.mail import send_mail
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 from .utils import (
     generate_verification_token,
@@ -333,13 +335,22 @@ class ResetPasswordView(APIView):
             )
         
         if reset_token.is_expired():
-            reset_token.delete()
+            # reset_token.delete()
             return Response(
                 {"error": "Token is Expired"},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         user = reset_token.user
+        try:
+            validate_password(password, user)
+        except ValidationError as e:
+            return Response(
+                {"error": e.messages},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # reset_token.delete()
         user.set_password(password)
         user.save()
         
@@ -349,3 +360,4 @@ class ResetPasswordView(APIView):
             {"detail": "Password reset successfully"},
             status=status.HTTP_200_OK
         )
+    

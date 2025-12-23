@@ -14,15 +14,15 @@ export default function ForgotPasswordPage() {
 
     function validateForm(values, shouldValidate) {
         const newErrors = {};
-        if(!shouldValidate)
+        if (!shouldValidate)
             return newErrors;
-      
-            if (!values.email) {
-                newErrors.email = "Email is required";
-            } else if (!/\S+@\S+\.\S+/.test(values.email)) {
-                newErrors.email = "Enter a valid email";
-            }
-        
+
+        if (!values.email) {
+            newErrors.email = "Email is required";
+        } else if (!/\S+@\S+\.\S+/.test(values.email)) {
+            newErrors.email = "Enter a valid email";
+        }
+
 
         return newErrors;
     }
@@ -70,7 +70,7 @@ export default function ForgotPasswordPage() {
     return (
         <div className="min-h-screen flex items-center text-black justify-center bg-gray-100">
             <div className="bg-white w-full max-w-md p-8 rounded-xl shadow-lg">
-                <h1 className="text-2xl font-semibold text-center mb-6">Reset Password</h1>
+                <h1 className="text-2xl font-semibold text-center mb-6">Forgot Password</h1>
                 <form onSubmit={submit} className="space-y-4">
                     {/* EMAIL */}
                     <div>
@@ -84,9 +84,9 @@ export default function ForgotPasswordPage() {
                                 }`}
                             placeholder="you@example.com"
                         />
-                       {touched && errors.email && (
-  <p className="text-red-500 text-xs mt-1">{errors.email}</p>
-)}
+                        {touched && errors.email && (
+                            <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+                        )}
                     </div>
 
 
