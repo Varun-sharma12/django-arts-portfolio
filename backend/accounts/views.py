@@ -315,14 +315,14 @@ class ResetPasswordView(APIView):
         password = request.data.get("password")
         confirm_password = request.data.get("confirm_password")
         
-        if not token or not password or not confirm_password:
+        if not password or not confirm_password:
             return Response(
-                {"error": "Token, Password and confirm password are required"},
+                {"error": "Both Fields are required"},
                 status = status.HTTP_400_BAD_REQUEST
             )
         if password != confirm_password:
             return Response(
-                {"error": "Password do not match"},
+                {"api_error": "Password do not match"},
                 status = status.HTTP_400_BAD_REQUEST
             )
         
@@ -330,14 +330,14 @@ class ResetPasswordView(APIView):
             reset_token = PasswordResetToken.objects.get(token=token)
         except PasswordResetToken.DoesNotExist:
             return Response(
-                {"error": "Invalid or expired token"},
+                {"api_error": "Invalid or expired token"},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         if reset_token.is_expired():
             # reset_token.delete()
             return Response(
-                {"error": "Token is Expired"},
+                {"api_error": "Token is Expired"},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -346,7 +346,7 @@ class ResetPasswordView(APIView):
             validate_password(password, user)
         except ValidationError as e:
             return Response(
-                {"error": e.messages},
+                {"api_error": e.messages},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

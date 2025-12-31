@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
             });
             const data = await res.json();
             // ✅ ALWAYS show same message (security)
-            setMessage(
+            setMessage(-
                 "If the email is registered and verified, a reset link has been sent."
             );
 
@@ -71,6 +71,11 @@ export default function ForgotPasswordPage() {
         <div className="min-h-screen flex items-center text-black justify-center bg-gray-100">
             <div className="bg-white w-full max-w-md p-8 rounded-xl shadow-lg">
                 <h1 className="text-2xl font-semibold text-center mb-6">Forgot Password</h1>
+                {message  && (
+          <div className="mt-4 text-center text-sm text-green-700">
+            {message}
+          </div>
+        )}
                 <form onSubmit={submit} className="space-y-4">
                     {/* EMAIL */}
                     <div>

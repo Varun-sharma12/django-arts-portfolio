@@ -97,6 +97,7 @@ class CreateCheckoutSessionView(APIView):
         
 @csrf_exempt
 def stripe_webhook(request):
+    print("🔥 WEBHOOK HIT")
     payload = request.body
     sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
 

@@ -6,7 +6,7 @@ from .models import User, PasswordResetToken
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
     # show is_email_verified in list view and details
-    list_display = ("username", "email", "is_staff", "is_active", "is_email_verified", "date_joined")
+    list_display = ("username", "email","plan", "is_staff", "is_active", "is_email_verified", "date_joined")
     list_filter = ("is_staff", "is_active", "is_email_verified")
     search_fields = ("username", "email")
     ordering = ("-date_joined",)

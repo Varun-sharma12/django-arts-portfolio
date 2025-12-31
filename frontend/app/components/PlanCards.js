@@ -1,27 +1,48 @@
 "use client";
 import { apiFetch } from "../lib/api";
 export default function PlanCards({ onPlanSelected }) {
-async function selectFreePlan() {
-  try {
-    const res = await apiFetch("/api/plans/select/", {
-      method: "POST",
-      body: JSON.stringify({ plan: "Free" }),
-    });
+  async function selectFreePlan() {
+    try {
+      const res = await apiFetch("/api/plans/select/", {
+        method: "POST",
+        body: JSON.stringify({ plan: "Free" }),
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (!res.ok) {
-      alert(data.error || "Failed to select plan");
-      return;
+      if (!res.ok) {
+        alert(data.error || "Failed to select plan");
+        return;
+      }
+
+      onPlanSelected(data.plan);
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong");
     }
-
-    onPlanSelected(data.plan);
-  } catch (err) {
-    console.error(err);
-    alert("Something went wrong");
   }
-}
 
+  async function purchasePlan(params) {
+    try {
+      const res = await apiFetch("/api/plans/create-checkout-session/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: "Pro" }),
+      });
+      const data = await res.json();
+      console.log(data);
+      if (!res.ok) {
+        alert(data.error || "Failed to select plan");
+        return;
+      }
+      console.log(data);
+      window.location.href = data.checkout_url;
+    }
+    catch (err) {
+      console.error(err);
+      alert("Something went wrong");
+    }
+  }
   return (
     <div className="grid grid-cols-1 text-black md:grid-cols-2 gap-6">
       {/* FREE PLAN */}
@@ -50,7 +71,7 @@ async function selectFreePlan() {
 
         <button
           className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 cursor-pointer"
-          onClick={() => alert("Upgrade API + payment later")}
+          onClick={purchasePlan}
         >
           Upgrade to Pro
         </button>
