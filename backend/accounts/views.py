@@ -235,11 +235,13 @@ class ProtectedView(APIView):
     def get(self, request):
         return Response(
             {
-                "id": request.user.id,
-                "email": request.user.email,
-                "plan": request.user.plan.title if request.user.plan else "Free",
                 "detail": "You are authenticated",
-                "user": request.user.username,
+                "user": {
+                    "id": request.user.id,
+                    "username": request.user.username,
+                    "email": request.user.email,
+                    "plan": request.user.plan.title if request.user.plan else None,
+                },
             },
             status=200,
         )

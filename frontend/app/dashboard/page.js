@@ -12,13 +12,13 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
 
   function handlePlanSelected(planName) {
-  // update local user state
-  const updatedUser = { ...user, plan: planName };
-  setUser(updatedUser);
+    // update local user state
+    const updatedUser = { ...user, plan: planName };
+    setUser(updatedUser);
 
-  // sync with localStorage
-  localStorage.setItem("user", JSON.stringify(updatedUser));
-}
+    // sync with localStorage
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+  }
 
 
   useEffect(() => {
@@ -52,7 +52,7 @@ export default function Dashboard() {
       {/* <p className="text-gray-600 mb-4">{message}</p> */}
 
       {/* NO PLAN SELECTED */}
-      {!user.plan && (
+      {user.plan === null && (
         <>
           <div className="bg-yellow-100 border border-yellow-300 p-4 rounded mb-6">
             <p className="font-medium text-yellow-800">
