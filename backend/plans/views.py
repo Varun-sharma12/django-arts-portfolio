@@ -7,6 +7,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
+from plans.tasks import handle_post_payment
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 User = get_user_model()
@@ -126,6 +127,7 @@ def stripe_webhook(request):
 
             user.plan = plan
             user.save()
+            handle_post_payment.delay(user.id, plan.title)
         except (User.DoesNotExist, Plan.DoesNotExist):
             pass
     
