@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "corsheaders",
     'plans',
     'portfolio',
+    'paypal'
 
 ]
 
@@ -169,3 +170,8 @@ CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/1"
+
+
+PAYPAL_CLIENT_ID = config('PAYPAL_CLIENT_ID')
+PAYPAL_CLIENT_SECRET = config('PAYPAL_CLIENT_SECRET')
+PAYPAL_BASE_URL = config('PAYPAL_BASE_URL')
