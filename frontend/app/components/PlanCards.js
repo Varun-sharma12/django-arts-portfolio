@@ -1,6 +1,10 @@
 "use client";
 import { apiFetch } from "../lib/api";
+import PayPalButton from "./PayPalButton";
 export default function PlanCards({ onPlanSelected }) {
+  const planId = "2"; // PayPal sandbox plan ID
+  const token = localStorage.getItem("accessToken");
+
   async function selectFreePlan() {
     try {
       const res = await apiFetch("/api/plans/select/", {
@@ -75,6 +79,7 @@ export default function PlanCards({ onPlanSelected }) {
         >
           Upgrade to Pro
         </button>
+        <PayPalButton planId={planId} token={token} />
       </div>
     </div>
   );
